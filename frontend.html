@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tes PHQ-9 - Deteksi Dini Depresi</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f6f6f6;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      text-align: center;
+      color: #4A7EBB;
+    }
+    p.description {
+      text-align: center;
+      color: #555;
+      margin-bottom: 30px;
+    }
+    .question {
+      margin-bottom: 20px;
+    }
+    .question label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .options label {
+      display: block;
+      margin-left: 10px;
+    }
+    button {
+      background-color: #4A7EBB;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #3A6CA8;
+    }
+    .result {
+      background-color: #E6F0FF;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tes Skrining Depresi PHQ-9</h1>
+    <p class="description">Jawablah 9 pertanyaan berikut berdasarkan perasaan Anda dalam dua minggu terakhir.</p>
+    <form id="phq9-form"></form>
+    <button type="button" onclick="hitungSkor()">Lihat Hasil</button>
+    <div id="hasil" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    const pertanyaan = [
+      "Kurang minat atau kesenangan dalam melakukan hal-hal?",
+      "Merasa murung, sedih, atau putus asa?",
+      "Kesulitan tidur atau tidur berlebihan?",
+      "Merasa lelah atau kurang energi?",
+      "Nafsu makan menurun atau makan berlebihan?",
+      "Merasa buruk terhadap diri sendiri – atau merasa gagal atau mengecewakan diri sendiri atau keluarga?",
+      "Kesulitan berkonsentrasi?",
+      "Bergerak atau berbicara sangat lambat, atau sebaliknya: gelisah atau tidak bisa diam?",
+      "Pikiran bahwa Anda lebih baik mati atau ingin menyakiti diri sendiri?"
+    ];
+
+    const options = [
+      "0 - Sama sekali tidak",
+      "1 - Beberapa hari",
+      "2 - Lebih dari setengah hari",
+      "3 - Hampir setiap hari"
+    ];
+
+    const form = document.getElementById('phq9-form');
+    pertanyaan.forEach((text, index) => {
+      const div = document.createElement('div');
+      div.className = 'question';
+      div.innerHTML = `<label for="q${index + 1}">${index + 1}. ${text}</label>`;
+
+      const optionDiv = document.createElement('div');
+      optionDiv.className = 'options';
+      options.forEach((opt, val) => {
+        optionDiv.innerHTML += `
+          <label>
+            <input type="radio" name="q${index + 1}" value="${val}" required /> ${opt}
+          </label>
+        `;
+      });
+
+      div.appendChild(optionDiv);
+      form.appendChild(div);
+    });
+
+    function hitungSkor() {
+      let total = 0;
+      let scores = [];
+
+      for (let i = 1; i <= 9; i++) {
+        const value = document.querySelector(`input[name='q${i}']:checked`);
+        if (value) {
+          const val = parseInt(value.value);
+          total += val;
+          scores.push(val);
+        } else {
+          alert("Harap isi semua pertanyaan.");
+          return;
+        }
+      }
+
+      fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ phq9_scores: scores })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Gagal menghubungi server");
+        }
+        return res.json();
+      })
+      .then(data => {
+        const hasilDiv = document.getElementById("hasil");
+        hasilDiv.style.display = 'block';
+        hasilDiv.innerHTML = `<h3>Hasil Tes</h3>
+          <p>Total Skor PHQ-9 Anda: <strong>${data.total_score}</strong></p>
+          <p>Kategori Depresi: <strong>${data.prediction}</strong></p>
+          <button onclick="window.location.href='chatbot.html'">Ingin Bicara dengan AI?</button>`;
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Ups! Gagal menghubungi backend. Pastikan server Flask sudah berjalan.");
+      });
+    }
+  </script>
+</body>
+</html>
